@@ -13,13 +13,14 @@ class Glib < Formula
   url 'ftp://ftp.gnome.org/pub/gnome/sources/glib/2.28/glib-2.28.6.tar.bz2'
   sha256 '557fb7c39d21b9359fbac51fd6b0b883bc97a2561c0166eef993a4078312f578'
 
+  depends_on 'autoconf'
   depends_on 'pkg-config' => :build
   depends_on 'gettext'
 
   fails_with_llvm "Undefined symbol errors while linking"
 
   def patches
-    mp = "http://trac.macports.org/export/77283/trunk/dports/devel/glib2/files/"
+    mp = "https://svn.macports.org/repository/macports/trunk/dports/devel/glib2/files/"
     {
       :p0 => [
         mp+"patch-configure.ac.diff",
@@ -27,7 +28,8 @@ class Glib < Formula
         mp+"patch-glib_gunicollate.c.diff",
         mp+"patch-gi18n.h.diff",
         mp+"patch-gio_xdgmime_xdgmime.c.diff",
-        mp+"patch-gio_gdbusprivate.c.diff"
+        mp+"patch-gio_gdbusprivate.c.diff",
+        mp+"patch-child-test.c.diff"
       ]
     }
   end
@@ -37,6 +39,8 @@ class Glib < Formula
   end
 
   def install
+    ENV.universal_binary
+    
     # Snow Leopard libiconv doesn't have a 64bit version of the libiconv_open
     # function, which breaks things for us, so we build our own
     # http://www.mail-archive.com/gtk-list@gnome.org/msg28747.html
@@ -45,6 +49,7 @@ class Glib < Formula
     iconvd.mkpath
 
     Libiconv.new.brew do
+      ENV.universal_binary
       system "./configure", "--disable-debug", "--disable-dependency-tracking",
                             "--prefix=#{iconvd}",
                             "--enable-static", "--disable-shared"
@@ -55,7 +60,9 @@ class Glib < Formula
     ENV.enable_warnings
 
     # Statically link to libiconv so glib doesn't use the bugged version in 10.6
-    ENV['LDFLAGS'] += " #{iconvd}/lib/libiconv.a"
+    ENV['LDFLAGS'] += " -L#{iconvd}/lib"
+
+    system Formula.factory("autoconf").bin+"autoconf"
 
     args = ["--disable-dependency-tracking", "--disable-rebuilds",
             "--prefix=#{prefix}",
@@ -66,7 +73,7 @@ class Glib < Formula
     system "./configure", *args
 
     # Fix for 64-bit support, from MacPorts
-    curl "http://trac.macports.org/export/69965/trunk/dports/devel/glib2/files/config.h.ed", "-O"
+    curl "https://svn.macports.org/repository/macports/trunk/dports/devel/glib2/files/config.h.ed", "-O"
     system "ed - config.h < config.h.ed"
 
     system "make"
