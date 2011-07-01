@@ -10,8 +10,8 @@ def build_tests?; ARGV.include? '--test'; end
 
 class Glib < Formula
   homepage 'http://developer.gnome.org/glib/2.28/'
-  url 'ftp://ftp.gnome.org/pub/gnome/sources/glib/2.28/glib-2.28.6.tar.bz2'
-  sha256 '557fb7c39d21b9359fbac51fd6b0b883bc97a2561c0166eef993a4078312f578'
+  url 'ftp://ftp.gnome.org/pub/gnome/sources/glib/2.28/glib-2.28.7.tar.bz2'
+  sha256 '0e1b3816a8934371d4ea2313dfbe25d10d16c950f8d02e0a7879ae10d91b1631'
 
   depends_on 'autoconf'
   depends_on 'pkg-config' => :build
@@ -35,12 +35,15 @@ class Glib < Formula
   end
 
   def options
-    [['--test', 'Build a debug build and run tests. NOTE: Tests may hang on "unix-streams".']]
+  [
+    ['--universal', 'Build universal binaries.'],
+    ['--test', 'Build a debug build and run tests. NOTE: Tests may hang on "unix-streams".']
+  ]
   end
 
   def install
-    ENV.universal_binary
-    
+    ENV.universal_binary if ARGV.build_universal?
+
     # Snow Leopard libiconv doesn't have a 64bit version of the libiconv_open
     # function, which breaks things for us, so we build our own
     # http://www.mail-archive.com/gtk-list@gnome.org/msg28747.html
@@ -49,7 +52,11 @@ class Glib < Formula
     iconvd.mkpath
 
     Libiconv.new.brew do
-      ENV.universal_binary
+      # Help out universal builds
+      # TODO - do these lines need to be here?
+      # ENV["ac_cv_func_malloc_0_nonnull"]='yes'
+      # ENV["gl_cv_func_malloc_0_nonnull"]='1'
+
       system "./configure", "--disable-debug", "--disable-dependency-tracking",
                             "--prefix=#{iconvd}",
                             "--enable-static", "--disable-shared"
@@ -69,6 +76,16 @@ class Glib < Formula
             "--with-libiconv=gnu"]
 
     args << "--disable-debug" unless build_tests?
+
+    if ARGV.build_universal?
+      # autoconf 2.61 is fine don't worry about it
+      inreplace ["aclocal.m4", "configure.ac"] do |s|
+        s.gsub! "AC_PREREQ([2.62])", "AC_PREREQ([2.61])"
+      end
+
+      # Run autoconf so universal builds will work
+      system "autoconf"
+    end
 
     system "./configure", *args
 
