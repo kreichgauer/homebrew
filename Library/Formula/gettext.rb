@@ -34,6 +34,8 @@ class Gettext < Formula
 
     ENV.universal_binary if ARGV.build_universal?
 
+    ENV.universal_binary if ARGV.build_universal?
+
     system "./configure", "--disable-dependency-tracking", "--disable-debug",
                           "--prefix=#{prefix}",
                           "--without-included-gettext",
